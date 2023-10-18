@@ -402,8 +402,62 @@ void EnablePWMOutput(TIM_HandleTypeDef *_htim) {
 	_htim->Instance->CR1 |= TIM_CR1_CEN;
 }
 
+#define NUM_THRUSTERS 8
+
+enum tctp_message_type {
+    ACK  = 0,
+    NACK = 1,
+    FULL_THRUST_CONTROL = 2,
+    TOOLS_THRUST_CONTROL = 3
+    /* Future expansion, may need a type for each "tool" */
+};
+
+struct tctp_message {
+    enum tctp_message_type type;
+
+    uint16_t message_id;
+
+    union {
+        uint8_t full_thrust_values[NUM_THRUSTERS];
+
+        /* TBD: Tools thrust values */
+
+        uint8_t ack_padding;
+        uint8_t nack_error_code;
+    } data;
+
+    uint16_t crc;
+};
+
+void tctp_receiver()
+{
+    struct tctp_message received = (struct tctp_message) SPI_RX_Buffer;
+    if (!message_correct) {
+        struct tctp_message nack = {
+            .type = NACK,
+            .message_id = received.message_id,// Parse this from SPI buffer
+            .data = {
+                .nack_error_code = , // Decide on error codes if they are even needed
+            },
+            .crc = , // Calculate CRC for this message and put here
+        }
+    }
+    // Send Nack
+    struct tctp_message ack = {
+        .type = ACK,
+        .message_id = received.message_id,// Parse this from SPI buffer
+        .data = {
+            .ack_padding = 0, // We may need to remove this if we don't need uniform payload size
+        },
+        .crc = , // Calculate CRC for this message and put here
+    }
+    // Send Ack
+    // Process message (send to PWMs) (this happens in the interrupt)
+}
+
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
 {
+    tctp_receiver();
     HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
 	htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
 	htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
