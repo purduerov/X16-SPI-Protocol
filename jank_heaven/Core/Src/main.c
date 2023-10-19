@@ -49,6 +49,7 @@ TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN PV */
 
 uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127};
+uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 /* USER CODE END PV */
 
@@ -432,8 +433,9 @@ struct tctp_message {
 void tctp_receiver()
 {
     struct tctp_message received = (struct tctp_message) SPI_RX_Buffer;
+    struct tctp_message message;
     if (!message_correct) {
-        struct tctp_message nack = {
+        struct tctp_message message = {
             .type = NACK,
             .message_id = received.message_id,// Parse this from SPI buffer
             .data = {
@@ -441,24 +443,24 @@ void tctp_receiver()
             },
             .crc = , // Calculate CRC for this message and put here
         }
+    } else {
+        struct tctp_message message = {
+            .type = ACK,
+            .message_id = received.message_id,// Parse this from SPI buffer
+            .data = {
+                .ack_padding = 0, // We may need to remove this if we don't need uniform payload size
+            },
+            .crc = , // Calculate CRC for this message and put here
+        }
     }
-    // Send Nack
-    struct tctp_message ack = {
-        .type = ACK,
-        .message_id = received.message_id,// Parse this from SPI buffer
-        .data = {
-            .ack_padding = 0, // We may need to remove this if we don't need uniform payload size
-        },
-        .crc = , // Calculate CRC for this message and put here
-    }
-    // Send Ack
+    HAL_SPI_Transmit(&hspi, &message, sizeof(message));
     // Process message (send to PWMs) (this happens in the interrupt)
 }
 
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
 {
-    tctp_receiver();
     HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+    tctp_receiver();
 	htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
 	htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
 	htim3.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[2] + 250;
