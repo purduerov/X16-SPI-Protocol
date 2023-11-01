@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -413,6 +414,8 @@ enum tctp_message_type {
     /* Future expansion, may need a type for each "tool" */
 };
 
+uint16_t expected_msg_id = 0;
+
 struct tctp_message {
     enum tctp_message_type type;
 
@@ -423,53 +426,103 @@ struct tctp_message {
 
         /* TBD: Tools thrust values */
 
-        uint8_t ack_padding;
-        uint8_t nack_error_code;
+        uint8_t padding;
     } data;
 
     uint16_t crc;
 };
 
-void tctp_receiver()
+/* CRC INIT */
+CRC_HandleTypeDef hcrc;
+hcrc.Instance = CRC;
+HAL_CRC_Init(&hcrc);
+
+// Configure the CRC polynomial (e.g., CRC-CCITT)
+hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
+hcrc.Init.GeneratingPolynomial = 0x1021;
+
+uint8_t CRC_compare(struct tctp_message received_msg)
 {
+    HAL_CRC_Reset(&hcrc);
+    /* I think this will calculate the CRC of the message including the CRC in it, needs
+     * to just be calculating on everything before the CRC */
+    HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, sizeof(received_msg) / 4);
+
+    uint16_t received_crc = received_msg.crc;
+    uint16_t calculated_crc = HAL_CRC_Calculate(&hcrc);
+
+    return received_crc == calculated_crc;
+}
+
+uint8_t tctp_handler()
+{
+    /* Once we recieve this we need to calculate its CRC to determine if it is valid */
     struct tctp_message received = (struct tctp_message) SPI_RX_Buffer;
-    struct tctp_message message;
-    if (!message_correct) {
-        struct tctp_message message = {
-            .type = NACK,
-            .message_id = received.message_id,// Parse this from SPI buffer
-            .data = {
-                .nack_error_code = , // Decide on error codes if they are even needed
-            },
-            .crc = , // Calculate CRC for this message and put here
-        }
+    struct tctp_message message = {
+        .message_id = received.message_id;
+        .data = {
+            .padding = 0;
+        },
+        .crc = 0, /* Placeholder, we may have hardware calculate this for us */
+    };
+
+    uint8_t message_correct = CRC_compare(received);
+
+    /* We need to make sure we are receiving the correct message */
+    message_correct = (expected_msg_id == received.message_id);
+
+    /* maybe add back error codes to say what is wrong with the message,
+     * ex: CRC wrong, unmatching msg ids etc */
+
+    if (message_correct) {
+        message.type = ACK;
     } else {
-        struct tctp_message message = {
-            .type = ACK,
-            .message_id = received.message_id,// Parse this from SPI buffer
-            .data = {
-                .ack_padding = 0, // We may need to remove this if we don't need uniform payload size
-            },
-            .crc = , // Calculate CRC for this message and put here
-        }
+        message.type = NACK;
     }
+
+    /* NOTE: Should we transmit the ACK after sending the data to the PWMs?
+     * I don't think it would make that much of a difference either way but
+     * maybe there is a chance that we get new data in before we end up 
+     * sending it back out? Even if so it probably would not be a problem
+     * because of the transmit rate */
+    /* Transmit ACK */
     HAL_SPI_Transmit(&hspi, &message, sizeof(message));
-    // Process message (send to PWMs) (this happens in the interrupt)
+
+    expected_msg_id++;
+
+    return message_correct;
 }
 
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
 {
     HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
-    tctp_receiver();
-	htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
-	htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
-	htim3.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[2] + 250;
-	htim3.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[3] + 250;
+    /* Add error handling to the handler so that it does not put false information into the PWMs */
+    struct tctp_message received = (struct tctp_message) SPI_RX_Buffer;
+    uint8_t message_correct = tctp_handler();
+    uint8_t received_payload[NUM_THRUSTERS] = received.data;
 
-	htim2.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[4] + 250;
-	htim2.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[5] + 250;
-	htim2.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[6] + 250;
-	htim2.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[7] + 250;
+    /* NOTE: Cannot do a guard clause here because this is an interrupt handler */
+    /* Send data to PWMs */
+    if (message_correct) {
+        htim3.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
+        htim3.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
+        htim3.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
+        htim3.Instance->CCR4 = (uint32_t) received_payload[3] + 250;
+
+        htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
+        htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
+        htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
+    }
+
+	// htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
+	// htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
+	// htim3.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[2] + 250;
+	// htim3.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[3] + 250;
+	//
+	// htim2.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[4] + 250;
+	// htim2.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[5] + 250;
+	// htim2.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[6] + 250;
+	// htim2.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[7] + 250;
 }
 
 /* USER CODE END 4 */
