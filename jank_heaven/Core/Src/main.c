@@ -446,7 +446,7 @@ uint8_t CRC_compare(struct tctp_message received_msg)
     HAL_CRC_Reset(&hcrc);
     /* I think this will calculate the CRC of the message including the CRC in it, needs
      * to just be calculating on everything before the CRC */
-    HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, sizeof(received_msg) / 4);
+    HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, (sizeof(received_msg) / 4));
 
     uint16_t received_crc = received_msg.crc;
     uint16_t calculated_crc = HAL_CRC_Calculate(&hcrc);
@@ -454,10 +454,9 @@ uint8_t CRC_compare(struct tctp_message received_msg)
     return received_crc == calculated_crc;
 }
 
-uint8_t tctp_handler()
+uint8_t tctp_handler(struct tctp_message received)
 {
     /* Once we recieve this we need to calculate its CRC to determine if it is valid */
-    struct tctp_message received = (struct tctp_message) SPI_RX_Buffer;
     struct tctp_message message = {
         .message_id = received.message_id;
         .data = {
@@ -485,6 +484,7 @@ uint8_t tctp_handler()
      * maybe there is a chance that we get new data in before we end up 
      * sending it back out? Even if so it probably would not be a problem
      * because of the transmit rate */
+
     /* Transmit ACK */
     HAL_SPI_Transmit(&hspi, &message, sizeof(message));
 
@@ -495,10 +495,11 @@ uint8_t tctp_handler()
 
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
 {
+    /* Pull SPI message into RX buffer */
     HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
     /* Add error handling to the handler so that it does not put false information into the PWMs */
-    struct tctp_message received = (struct tctp_message) SPI_RX_Buffer;
-    uint8_t message_correct = tctp_handler();
+    struct tctp_message received_msg = (struct tctp_message) SPI_RX_Buffer;
+    uint8_t message_correct = tctp_handler(received_msg);
     uint8_t received_payload[NUM_THRUSTERS] = received.data;
 
     /* NOTE: Cannot do a guard clause here because this is an interrupt handler */
