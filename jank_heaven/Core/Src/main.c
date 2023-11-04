@@ -20,6 +20,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -433,42 +436,43 @@ struct tctp_message {
 };
 
 /* CRC INIT */
-CRC_HandleTypeDef hcrc;
-hcrc.Instance = CRC;
-HAL_CRC_Init(&hcrc);
+// CRC_HandleTypeDef hcrc;
+// hcrc.Instance = CRC;
+// HAL_CRC_Init(&hcrc);
 
 // Configure the CRC polynomial (e.g., CRC-CCITT)
-hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
-hcrc.Init.GeneratingPolynomial = 0x1021;
+// hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
+// hcrc.Init.GeneratingPolynomial = 0x1021;
 
-uint8_t CRC_compare(struct tctp_message received_msg)
-{
-    HAL_CRC_Reset(&hcrc);
-    /* I think this will calculate the CRC of the message including the CRC in it, needs
-     * to just be calculating on everything before the CRC. Does the -2 fix it? */
-    HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, ((sizeof(received_msg) - 2) / 4));
-
-    uint16_t received_crc = received_msg.crc;
-    uint16_t calculated_crc = HAL_CRC_Calculate(&hcrc);
-
-    return received_crc == calculated_crc;
-}
+// uint8_t CRC_compare(struct tctp_message received_msg)
+// {
+//     HAL_CRC_Reset(&hcrc);
+//     /* I think this will calculate the CRC of the message including the CRC in it, needs
+//      * to just be calculating on everything before the CRC. Does the -2 fix it? */
+//     HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, ((sizeof(received_msg) - 2) / 4));
+//
+//     uint16_t received_crc = received_msg.crc;
+//     uint16_t calculated_crc = HAL_CRC_Calculate(&hcrc);
+//
+//     return received_crc == calculated_crc;
+// }
 
 uint8_t tctp_handler(struct tctp_message received)
 {
     /* Once we recieve this we need to calculate its CRC to determine if it is valid */
     struct tctp_message message = {
-        .message_id = received.message_id;
+        .message_id = received.message_id,
         .data = {
-            .padding = 0;
+            .padding = 0,
         },
         .crc = 0, /* Placeholder, we may have hardware calculate this for us */
     };
 
-    uint8_t message_correct = CRC_compare(received);
+    // uint8_t message_correct = CRC_compare(received);
+    uint8_t message_correct = 1;
 
     /* We need to make sure we are receiving the correct message */
-    message_correct = (expected_msg_id == received.message_id);
+    // message_correct = (expected_msg_id == received.message_id);
 
     /* maybe add back error codes to say what is wrong with the message,
      * ex: CRC wrong, unmatching msg ids etc */
@@ -486,7 +490,7 @@ uint8_t tctp_handler(struct tctp_message received)
      * because of the transmit rate */
 
     /* Transmit response */
-    HAL_SPI_Transmit_IT(&hspi, (uint8_t*)&message, sizeof(message));
+    HAL_SPI_Transmit_IT(&hspi1, (uint8_t*)&message, sizeof(message));
 
     expected_msg_id++;
 
@@ -500,7 +504,9 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
     struct tctp_message* received_msg = (struct tctp_message*) SPI_RX_Buffer;
     uint8_t message_correct = tctp_handler(*received_msg);
     /* Need to confirm the type is FULL_THRUST_CONTROL before we do this */
-    uint8_t received_payload[NUM_THRUSTERS] = received_msg->data;
+    // uint8_t received_payload[NUM_THRUSTERS] = received_msg->data.full_thrust_values;
+    uint8_t received_payload[NUM_THRUSTERS];
+    memcpy(received_payload, received_msg->data.full_thrust_values, NUM_THRUSTERS);
 
     /* NOTE: Cannot do a guard clause here because this is an interrupt handler */
     /* Send data to PWMs */
