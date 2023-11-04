@@ -486,7 +486,7 @@ uint8_t tctp_handler(struct tctp_message received)
      * because of the transmit rate */
 
     /* Transmit response */
-    HAL_SPI_Receive_IT(&hspi, &message, sizeof(message));
+    HAL_SPI_Transmit_IT(&hspi, &message, sizeof(message));
 
     expected_msg_id++;
 
