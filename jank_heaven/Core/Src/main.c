@@ -486,7 +486,7 @@ uint8_t tctp_handler(struct tctp_message received)
      * because of the transmit rate */
 
     /* Transmit response */
-    HAL_SPI_Transmit_IT(&hspi, &message, sizeof(message));
+    HAL_SPI_Transmit_IT(&hspi, (uint8_t*)&message, sizeof(message));
 
     expected_msg_id++;
 
@@ -497,10 +497,10 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
 {
     /* Pull SPI message into RX buffer */
     HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
-    /* Add error handling to the handler so that it does not put false information into the PWMs */
-    struct tctp_message received_msg = (struct tctp_message) SPI_RX_Buffer;
-    uint8_t message_correct = tctp_handler(received_msg);
-    uint8_t received_payload[NUM_THRUSTERS] = received.data;
+    struct tctp_message* received_msg = (struct tctp_message*) SPI_RX_Buffer;
+    uint8_t message_correct = tctp_handler(*received_msg);
+    /* Need to confirm the type is FULL_THRUST_CONTROL before we do this */
+    uint8_t received_payload[NUM_THRUSTERS] = received_msg->data;
 
     /* NOTE: Cannot do a guard clause here because this is an interrupt handler */
     /* Send data to PWMs */
