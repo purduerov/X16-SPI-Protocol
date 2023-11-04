@@ -445,8 +445,8 @@ uint8_t CRC_compare(struct tctp_message received_msg)
 {
     HAL_CRC_Reset(&hcrc);
     /* I think this will calculate the CRC of the message including the CRC in it, needs
-     * to just be calculating on everything before the CRC */
-    HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, (sizeof(received_msg) / 4));
+     * to just be calculating on everything before the CRC. Does the -2 fix it? */
+    HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, ((sizeof(received_msg) - 2) / 4));
 
     uint16_t received_crc = received_msg.crc;
     uint16_t calculated_crc = HAL_CRC_Calculate(&hcrc);
@@ -485,7 +485,7 @@ uint8_t tctp_handler(struct tctp_message received)
      * sending it back out? Even if so it probably would not be a problem
      * because of the transmit rate */
 
-    /* Transmit ACK */
+    /* Transmit response */
     HAL_SPI_Transmit(&hspi, &message, sizeof(message));
 
     expected_msg_id++;
