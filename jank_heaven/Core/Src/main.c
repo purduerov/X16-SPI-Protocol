@@ -536,6 +536,7 @@ uint8_t tctp_handler(struct tctp_message received)
 
     /* Transmit response */
     HAL_SPI_Transmit_IT(&hspi1, (uint8_t*)&message, sizeof(message));
+    HAL_GPIO_WritePin()
 
     expected_msg_id++;
 
