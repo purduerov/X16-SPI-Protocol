@@ -19,10 +19,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -36,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SPI_BUFFER_SIZE 8
+#define SPI_BUFFER_SIZE 13
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -45,6 +41,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CRC_HandleTypeDef hcrc;
+
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim2;
@@ -52,7 +50,7 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 
-uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127};
+uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
 uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 /* USER CODE END PV */
@@ -63,6 +61,7 @@ static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 
 void EnablePWMOutput(TIM_HandleTypeDef *_htim);
@@ -105,6 +104,7 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
 
   /**
@@ -133,54 +133,57 @@ int main(void)
 
   EnablePWMOutput(&htim3);
   EnablePWMOutput(&htim2);
-  HAL_Delay(10000);
+  //HAL_Delay(10000);
 
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
-  while (1)
-  {
-	  for (int i = 0; i < 250; i++)
-	  {
-		  htim2.Instance->CCR1 = (uint32_t) (i + 250);
-		  htim2.Instance->CCR2 = (uint32_t) (i + 250);
-		  htim2.Instance->CCR3 = (uint32_t) (i + 250);
-		  htim2.Instance->CCR4 = (uint32_t) (i + 250);
-		  HAL_Delay(50);
-	  }
-
-	  for (int i = 250; i > 0; i--)
-	  {
-	  	  htim2.Instance->CCR1 = (uint32_t) (i + 250);
-	  	  htim2.Instance->CCR2 = (uint32_t) (i + 250);
-	  	  htim2.Instance->CCR3 = (uint32_t) (i + 250);
-	  	  htim2.Instance->CCR4 = (uint32_t) (i + 250);
-	  	  HAL_Delay(50);
-	  }
-	  //HAL_IWDG_Refresh(&hiwdg);
-	  //HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
-	  //HAL_SPI_Receive(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE, 50000);
-	  //HAL_NVIC_DisableIRQ(SPI1_IRQn);
-	  //Data handling goes here
-
-//	  htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
-//	  htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
-//	  htim3.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[2] + 250;
-//	  htim3.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[3] + 250;
+  HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+  for (;;) {
+	  asm("nop");
+  }
+//  while (1)
+//  {
+//	  for (int i = 0; i < 250; i++)
+//	  {
+//		  htim2.Instance->CCR1 = (uint32_t) (i + 250);
+//		  htim2.Instance->CCR2 = (uint32_t) (i + 250);
+//		  htim2.Instance->CCR3 = (uint32_t) (i + 250);
+//		  htim2.Instance->CCR4 = (uint32_t) (i + 250);
+//		  HAL_Delay(50);
+//	  }
 //
-//	  htim2.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[4] + 250;
-//	  htim2.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[5] + 250;
-//	  htim2.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[6] + 250;
-//	  htim2.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[7] + 250;
-
-	  //HAL_NVIC_EnableIRQ(SPI1_IRQn);
+//	  for (int i = 250; i > 0; i--)
+//	  {
+//	  	  htim2.Instance->CCR1 = (uint32_t) (i + 250);
+//	  	  htim2.Instance->CCR2 = (uint32_t) (i + 250);
+//	  	  htim2.Instance->CCR3 = (uint32_t) (i + 250);
+//	  	  htim2.Instance->CCR4 = (uint32_t) (i + 250);
+//	  	  HAL_Delay(50);
+//	  }
+//	  //HAL_IWDG_Refresh(&hiwdg);
+	  //HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+//	  //HAL_SPI_Receive(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE, 50000);
+//	  //HAL_NVIC_DisableIRQ(SPI1_IRQn);
+//	  //Data handling goes here
+//
+////	  htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
+////	  htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
+////	  htim3.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[2] + 250;
+////	  htim3.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[3] + 250;
+////
+////	  htim2.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[4] + 250;
+////	  htim2.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[5] + 250;
+////	  htim2.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[6] + 250;
+////	  htim2.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[7] + 250;
+//
+//	  //HAL_NVIC_EnableIRQ(SPI1_IRQn);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+//  }
   /* USER CODE END 3 */
 }
 
@@ -217,6 +220,38 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
+  hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
+  hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
+  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
+  //HAL_CRCEx_Polynomial_Set(&hcrc, 0x1021, 32);
+  //hcrc.Init.GeneratingPolynomial = 0x1021;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
 }
 
 /**
@@ -433,42 +468,52 @@ struct tctp_message {
     } data;
 
     uint16_t crc;
-};
+}__attribute__((packed));
 
 /* CRC INIT */
 // CRC_HandleTypeDef hcrc;
 // hcrc.Instance = CRC;
-// HAL_CRC_Init(&hcrc);
+//HAL_CRC_Init(&hcrc);
 
 // Configure the CRC polynomial (e.g., CRC-CCITT)
 // hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
-// hcrc.Init.GeneratingPolynomial = 0x1021;
 
-// uint8_t CRC_compare(struct tctp_message received_msg)
-// {
-//     HAL_CRC_Reset(&hcrc);
-//     /* I think this will calculate the CRC of the message including the CRC in it, needs
-//      * to just be calculating on everything before the CRC. Does the -2 fix it? */
-//     HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, ((sizeof(received_msg) - 2) / 4));
-//
-//     uint16_t received_crc = received_msg.crc;
-//     uint16_t calculated_crc = HAL_CRC_Calculate(&hcrc);
-//
-//     return received_crc == calculated_crc;
-// }
+ uint8_t CRC_compare(struct tctp_message received_msg)
+ {
+     //HAL_CRC_Reset(&hcrc);
+     /* I think this will calculate the CRC of the message including the CRC in it, needs
+      * to just be calculating on everything before the CRC. Does the -2 fix it? */
+     //HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, ((sizeof(received_msg) - 2) / 4));
+
+     uint16_t received_crc = received_msg.crc;
+     uint32_t testing = 1000;
+     //uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&received_msg, sizeof(received_msg) - 2);
+     uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, &testing, 1);
+
+//     uint32_t NEW_RX_Buffer[13];
+//     for (int i = 0; i < 13; i++) {
+//    	 NEW_RX_Buffer[i] = SPI_RX_Buffer[i];
+//     }
+     //uint32_t NEW_RX_Buffer[3];
+     //NEW_RX_Buffer[0] = SPI_RX_Buffer[0] << |;
+     //uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, SPI_RX_Buffer, 11);
+
+
+     return received_crc == calculated_crc;
+ }
 
 uint8_t tctp_handler(struct tctp_message received)
 {
     /* Once we recieve this we need to calculate its CRC to determine if it is valid */
     struct tctp_message message = {
         .message_id = received.message_id,
-        .data = {
-            .padding = 0,
-        },
+//        .data = {
+//            .padding = 0,
+//        },
         .crc = 0, /* Placeholder, we may have hardware calculate this for us */
     };
 
-    // uint8_t message_correct = CRC_compare(received);
+    uint8_t message_correct = CRC_compare(received);
     uint8_t message_correct = 1;
 
     /* We need to make sure we are receiving the correct message */
@@ -485,7 +530,7 @@ uint8_t tctp_handler(struct tctp_message received)
 
     /* NOTE: Should we transmit the ACK after sending the data to the PWMs?
      * I don't think it would make that much of a difference either way but
-     * maybe there is a chance that we get new data in before we end up 
+     * maybe there is a chance that we get new data in before we end up
      * sending it back out? Even if so it probably would not be a problem
      * because of the transmit rate */
 
@@ -562,3 +607,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
