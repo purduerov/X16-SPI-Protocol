@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <inttypes.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -506,6 +507,7 @@ uint8_t tctp_handler(struct tctp_message received)
 {
     /* Once we recieve this we need to calculate its CRC to determine if it is valid */
     struct tctp_message message = {
+        /* message type is set later on */
         .message_id = received.message_id,
 //        .data = {
 //            .padding = 0,
@@ -514,7 +516,7 @@ uint8_t tctp_handler(struct tctp_message received)
     };
 
     uint8_t message_correct = CRC_compare(received);
-    uint8_t message_correct = 1;
+    message_correct = 1;
 
     /* We need to make sure we are receiving the correct message */
     // message_correct = (expected_msg_id == received.message_id);
@@ -533,6 +535,11 @@ uint8_t tctp_handler(struct tctp_message received)
      * maybe there is a chance that we get new data in before we end up
      * sending it back out? Even if so it probably would not be a problem
      * because of the transmit rate */
+
+    /* Wait for SPI to be ready */
+    while (hspi1->State == HAL_SPI_STATE_BUSY) {
+
+    }
 
     /* Transmit response */
     HAL_SPI_Transmit_IT(&hspi1, (uint8_t*)&message, sizeof(message));
