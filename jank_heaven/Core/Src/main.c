@@ -536,6 +536,9 @@ uint8_t tctp_handler(struct tctp_message received)
      * sending it back out? Even if so it probably would not be a problem
      * because of the transmit rate */
 
+    /* Give SPI a change to free up */
+    HAL_Delay(1);
+
     /* Wait for SPI to be ready */
     while (hspi1->State == HAL_SPI_STATE_BUSY) {
 
