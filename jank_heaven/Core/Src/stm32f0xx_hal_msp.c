@@ -21,6 +21,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
@@ -80,6 +81,50 @@ void HAL_MspInit(void)
 }
 
 /**
+* @brief CRC MSP Initialization
+* This function configures the hardware resources used in this example
+* @param hcrc: CRC handle pointer
+* @retval None
+*/
+void HAL_CRC_MspInit(CRC_HandleTypeDef* hcrc)
+{
+  if(hcrc->Instance==CRC)
+  {
+  /* USER CODE BEGIN CRC_MspInit 0 */
+
+  /* USER CODE END CRC_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_CRC_CLK_ENABLE();
+  /* USER CODE BEGIN CRC_MspInit 1 */
+
+  /* USER CODE END CRC_MspInit 1 */
+  }
+
+}
+
+/**
+* @brief CRC MSP De-Initialization
+* This function freeze the hardware resources used in this example
+* @param hcrc: CRC handle pointer
+* @retval None
+*/
+void HAL_CRC_MspDeInit(CRC_HandleTypeDef* hcrc)
+{
+  if(hcrc->Instance==CRC)
+  {
+  /* USER CODE BEGIN CRC_MspDeInit 0 */
+
+  /* USER CODE END CRC_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_CRC_CLK_DISABLE();
+  /* USER CODE BEGIN CRC_MspDeInit 1 */
+
+  /* USER CODE END CRC_MspDeInit 1 */
+  }
+
+}
+
+/**
 * @brief SPI MSP Initialization
 * This function configures the hardware resources used in this example
 * @param hspi: SPI handle pointer
@@ -97,9 +142,11 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     __HAL_RCC_SPI1_CLK_ENABLE();
 
     __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
     /**SPI1 GPIO Configuration
     PA5     ------> SPI1_SCK
     PA7     ------> SPI1_MOSI
+    PB4     ------> SPI1_MISO
     */
     GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -107,6 +154,13 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF0_SPI1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_4;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF0_SPI1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     /* SPI1 interrupt Init */
     HAL_NVIC_SetPriority(SPI1_IRQn, 0, 0);
@@ -137,8 +191,11 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
     /**SPI1 GPIO Configuration
     PA5     ------> SPI1_SCK
     PA7     ------> SPI1_MOSI
+    PB4     ------> SPI1_MISO
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_5|GPIO_PIN_7);
+
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_4);
 
     /* SPI1 interrupt DeInit */
     HAL_NVIC_DisableIRQ(SPI1_IRQn);

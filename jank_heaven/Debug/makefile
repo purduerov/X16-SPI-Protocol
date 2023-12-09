@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (10.3-2021.10)
+# Toolchain: GNU Tools for STM32 (11.3.rel1)
 ################################################################################
 
 -include ../makefile.init
@@ -60,8 +60,8 @@ all: main-build
 main-build: jank_heaven.elf secondary-outputs
 
 # Tool invocations
-jank_heaven.elf jank_heaven.map: $(OBJS) $(USER_OBJS) C:\Users\super\Downloads\X15-Embedded-master\ (1)\X15-Embedded-master\jank_heaven\STM32F042K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "jank_heaven.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\super\Downloads\X15-Embedded-master (1)\X15-Embedded-master\jank_heaven\STM32F042K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="jank_heaven.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+jank_heaven.elf jank_heaven.map: $(OBJS) $(USER_OBJS) C:\Users\derec\Documents\GitHub\X16-SPI-Protocol\jank_heaven\STM32F042K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "jank_heaven.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\derec\Documents\GitHub\X16-SPI-Protocol\jank_heaven\STM32F042K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="jank_heaven.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

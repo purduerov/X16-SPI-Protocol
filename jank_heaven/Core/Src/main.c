@@ -51,7 +51,7 @@ TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN PV */
 
 uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
-uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 
 /* USER CODE END PV */
 
@@ -140,7 +140,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+
+  HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
   for (;;) {
 	  asm("nop");
   }
@@ -242,8 +243,6 @@ static void MX_CRC_Init(void)
   hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
   hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
   hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
-  //HAL_CRCEx_Polynomial_Set(&hcrc, 0x1021, 32);
-  //hcrc.Init.GeneratingPolynomial = 0x1021;
   if (HAL_CRC_Init(&hcrc) != HAL_OK)
   {
     Error_Handler();
@@ -272,7 +271,7 @@ static void MX_SPI1_Init(void)
   /* SPI1 parameter configuration*/
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_SLAVE;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES_RXONLY;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
@@ -422,11 +421,26 @@ static void MX_TIM3_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PA8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -502,7 +516,7 @@ struct tctp_message {
      return received_crc == calculated_crc;
  }
 
-uint8_t tctp_handler(struct tctp_message received)
+uint8_t tctp_handler(struct tctp_message received, struct tctp_message* send_me)
 {
     /* Once we recieve this we need to calculate its CRC to determine if it is valid */
     struct tctp_message message = {
@@ -514,7 +528,7 @@ uint8_t tctp_handler(struct tctp_message received)
     };
 
     uint8_t message_correct = CRC_compare(received);
-    uint8_t message_correct = 1;
+    message_correct = 1;
 
     /* We need to make sure we are receiving the correct message */
     // message_correct = (expected_msg_id == received.message_id);
@@ -535,21 +549,45 @@ uint8_t tctp_handler(struct tctp_message received)
      * because of the transmit rate */
 
     /* Transmit response */
-    HAL_SPI_Transmit_IT(&hspi1, (uint8_t*)&message, sizeof(message));
-
+    //HAL_SPI_Transmit(&hspi1, (uint8_t*)&message, sizeof(message), 100);
+    *send_me = message;
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
     expected_msg_id++;
 
     return message_correct;
 }
 
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 {
-    /* Pull SPI message into RX buffer */
-    HAL_SPI_Receive_IT(&hspi1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
     struct tctp_message* received_msg = (struct tctp_message*) SPI_RX_Buffer;
-    uint8_t message_correct = tctp_handler(*received_msg);
+    struct tctp_message* send_me;
+    uint8_t message_correct = tctp_handler(*received_msg, send_me);
     /* Need to confirm the type is FULL_THRUST_CONTROL before we do this */
     // uint8_t received_payload[NUM_THRUSTERS] = received_msg->data.full_thrust_values;
+    //SPI_TX_Buffer = (uint8_t)send_me;
+    uint8_t temp[SPI_BUFFER_SIZE];
+//    memcpy(temp, send_me, 5);
+//    temp[5] = 0;
+//    temp[6] = 0;
+//    temp[7] = 0;
+//    temp[8] = 0;
+//    temp[9] = 0;
+//    temp[10] = 0;
+//    temp[11] = 0;
+//    temp[12] = 0;
+
+    memcpy(SPI_TX_Buffer, (uint8_t)send_me, 5);
+    SPI_TX_Buffer[5] = 0;
+	SPI_TX_Buffer[6] = 0;
+	SPI_TX_Buffer[7] = 0;
+	SPI_TX_Buffer[8] = 0;
+	SPI_TX_Buffer[9] = 0;
+	SPI_TX_Buffer[10] = 0;
+	SPI_TX_Buffer[11] = 0;
+	SPI_TX_Buffer[12] = 0;
+
+
+    HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
     uint8_t received_payload[NUM_THRUSTERS];
     memcpy(received_payload, received_msg->data.full_thrust_values, NUM_THRUSTERS);
 
@@ -564,7 +602,45 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
         htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
         htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
         htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
+        htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
     }
+
+	// htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
+	// htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
+	// htim3.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[2] + 250;
+	// htim3.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[3] + 250;
+	//
+	// htim2.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[4] + 250;
+	// htim2.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[5] + 250;
+	// htim2.Instance->CCR3 = (uint32_t) SPI_RX_Buffer[6] + 250;
+	// htim2.Instance->CCR4 = (uint32_t) SPI_RX_Buffer[7] + 250;
+}
+
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef * hspi)
+{
+    /* Pull SPI message into RX buffer */
+//    HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+//    struct tctp_message* received_msg = (struct tctp_message*) SPI_RX_Buffer;
+//    uint8_t message_correct = tctp_handler(*received_msg);
+//    /* Need to confirm the type is FULL_THRUST_CONTROL before we do this */
+//    // uint8_t received_payload[NUM_THRUSTERS] = received_msg->data.full_thrust_values;
+//    uint8_t received_payload[NUM_THRUSTERS];
+//    memcpy(received_payload, received_msg->data.full_thrust_values, NUM_THRUSTERS);
+//
+//    /* NOTE: Cannot do a guard clause here because this is an interrupt handler */
+//    /* Send data to PWMs */
+//    if (message_correct) {
+//        htim3.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
+//        htim3.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
+//        htim3.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
+//        htim3.Instance->CCR4 = (uint32_t) received_payload[3] + 250;
+//
+//        htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
+//        htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
+//        htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
+//        htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
+//    }
 
 	// htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
 	// htim3.Instance->CCR2 = (uint32_t) SPI_RX_Buffer[1] + 250;
@@ -607,4 +683,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
