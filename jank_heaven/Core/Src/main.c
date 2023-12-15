@@ -130,6 +130,24 @@ int main(void)
   HAL_TIM_PWM_Start(&htim2, 3);
   HAL_TIM_PWM_Start(&htim2, 4);
 */
+  /*
+  SPI_RX_Buffer[0] = 2;
+  SPI_RX_Buffer[1] = 0x5d;
+  SPI_RX_Buffer[2] = 0x8b;
+  SPI_RX_Buffer[3] = 200;
+  SPI_RX_Buffer[4] = 200;
+  SPI_RX_Buffer[5] = 200;
+  SPI_RX_Buffer[6] = 200;
+  SPI_RX_Buffer[7] = 200;
+  SPI_RX_Buffer[8] = 200;
+  SPI_RX_Buffer[9] = 200;
+  SPI_RX_Buffer[10] = 200;
+  SPI_RX_Buffer[11] = 1;
+  SPI_RX_Buffer[12] = 1;*/
+
+  //HAL_SPI_TxRxCpltCallback(&hspi1);
+
+
 
   EnablePWMOutput(&htim3);
   EnablePWMOutput(&htim2);
@@ -484,6 +502,15 @@ struct tctp_message {
     uint16_t crc;
 }__attribute__((packed));
 
+struct tctp_message_tx {
+    enum tctp_message_type type;
+
+    uint16_t message_id;
+
+    uint16_t crc;
+}__attribute__((packed));
+
+
 /* CRC INIT */
 // CRC_HandleTypeDef hcrc;
 // hcrc.Instance = CRC;
@@ -516,7 +543,7 @@ struct tctp_message {
      return received_crc == calculated_crc;
  }
 
-uint8_t tctp_handler(struct tctp_message received, struct tctp_message* send_me)
+uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_me)
 {
     /* Once we recieve this we need to calculate its CRC to determine if it is valid */
     struct tctp_message message = {
@@ -550,7 +577,7 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message* send_me)
 
     /* Transmit response */
     //HAL_SPI_Transmit(&hspi1, (uint8_t*)&message, sizeof(message), 100);
-    *send_me = message;
+    //*send_me = message;
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
     expected_msg_id++;
 
@@ -560,12 +587,12 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message* send_me)
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 {
     struct tctp_message* received_msg = (struct tctp_message*) SPI_RX_Buffer;
-    struct tctp_message* send_me;
+    struct tctp_message_tx* send_me;
     uint8_t message_correct = tctp_handler(*received_msg, send_me);
     /* Need to confirm the type is FULL_THRUST_CONTROL before we do this */
     // uint8_t received_payload[NUM_THRUSTERS] = received_msg->data.full_thrust_values;
     //SPI_TX_Buffer = (uint8_t)send_me;
-    uint8_t temp[SPI_BUFFER_SIZE];
+    //uint8_t temp[SPI_BUFFER_SIZE];
 //    memcpy(temp, send_me, 5);
 //    temp[5] = 0;
 //    temp[6] = 0;
@@ -575,7 +602,32 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 //    temp[10] = 0;
 //    temp[11] = 0;
 //    temp[12] = 0;
+    int i;
 
+    if (message_correct) {
+    	SPI_TX_Buffer[0] = ACK;
+    	SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
+    	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
+    	SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
+    	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+
+    	for (i=5;i<13;i++) {
+    		SPI_TX_Buffer[i] = 0;
+    	}
+    }
+    else {
+    	SPI_TX_Buffer[0] = NACK;
+    	SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
+    	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
+    	SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
+    	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+
+    	for (i=5;i<13;i++) {
+    		SPI_TX_Buffer[i] = 0;
+    	}
+    }
+
+    /*
     memcpy(SPI_TX_Buffer, (uint8_t)send_me, 5);
     SPI_TX_Buffer[5] = 0;
 	SPI_TX_Buffer[6] = 0;
@@ -585,6 +637,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 	SPI_TX_Buffer[10] = 0;
 	SPI_TX_Buffer[11] = 0;
 	SPI_TX_Buffer[12] = 0;
+	*/
 
 
     HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
