@@ -148,6 +148,29 @@ int main(void)
   //HAL_SPI_TxRxCpltCallback(&hspi1);
 
 
+  // 	CRC TESTING - LEAVE COMMENTED OR DELETE LATER
+  /*
+  uint32_t SPI_RX_Buffer_32[SPI_BUFFER_SIZE];
+
+  int i;
+  for (i=0;i<SPI_BUFFER_SIZE;i++) {
+	  SPI_RX_Buffer_32[i] = (uint32_t) SPI_RX_Buffer[i];
+  }
+
+
+  //uint8_t test[2] = {10, 2};
+  //uint32_t * test2 = (uint32_t * ) test;
+
+
+  uint32_t CRC_value = HAL_CRC_Calculate(&hcrc, SPI_RX_Buffer_32, 11);
+  //uint32_t CRC_value = HAL_CRC_Calculate(&hcrc, SPI_RX_Buffer_32, 13);
+
+  //uint32_t hi = (uint32_t) SPI_RX_Buffer[1]; */
+
+
+
+
+
 
   EnablePWMOutput(&htim3);
   EnablePWMOutput(&htim2);
@@ -158,6 +181,25 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+
+  SPI_RX_Buffer[0] = 2;
+  SPI_RX_Buffer[1] = 0;
+  SPI_RX_Buffer[2] = 32;
+  SPI_RX_Buffer[3] = 200;
+  SPI_RX_Buffer[4] = 200;
+  SPI_RX_Buffer[5] = 200;
+  SPI_RX_Buffer[6] = 200;
+  SPI_RX_Buffer[7] = 200;
+  SPI_RX_Buffer[8] = 200;
+  SPI_RX_Buffer[9] = 200;
+  SPI_RX_Buffer[10] = 200;
+  SPI_RX_Buffer[11] = 72;
+  SPI_RX_Buffer[12] = 139;
+  // weird things happening
+
+
+  HAL_SPI_TxRxCpltCallback(&hspi1);
 
   HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
   for (;;) {
@@ -260,7 +302,7 @@ static void MX_CRC_Init(void)
   hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
   hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
   hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
-  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
+  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_WORDS;
   if (HAL_CRC_Init(&hcrc) != HAL_OK)
   {
     Error_Handler();
@@ -527,10 +569,18 @@ struct tctp_message_tx {
      //HAL_CRC_Accumulate(&hcrc, (uint32_t*)&received_msg, ((sizeof(received_msg) - 2) / 4));
 
      uint16_t received_crc = received_msg.crc;
-     uint32_t testing = 1000;
+     //uint32_t testing = 1000;
      //uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, (uint32_t*)&received_msg, sizeof(received_msg) - 2);
-     uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, &testing, 1);
 
+     uint32_t SPI_RX_Buffer_32[SPI_BUFFER_SIZE];
+
+     int i;
+     for (i=0;i<SPI_BUFFER_SIZE;i++) {
+   	  SPI_RX_Buffer_32[i] = (uint32_t) SPI_RX_Buffer[i];
+     }
+
+     uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, SPI_RX_Buffer_32, 11);
+     calculated_crc = (uint16_t) calculated_crc;
 //     uint32_t NEW_RX_Buffer[13];
 //     for (int i = 0; i < 13; i++) {
 //    	 NEW_RX_Buffer[i] = SPI_RX_Buffer[i];
@@ -555,7 +605,6 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_
     };
 
     uint8_t message_correct = CRC_compare(received);
-    message_correct = 1;
 
     /* We need to make sure we are receiving the correct message */
     // message_correct = (expected_msg_id == received.message_id);
@@ -606,26 +655,18 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 
     if (message_correct) {
     	SPI_TX_Buffer[0] = ACK;
-    	SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
-    	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
-    	SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
-    	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
-
-    	for (i=5;i<13;i++) {
-    		SPI_TX_Buffer[i] = 0;
-    	}
     }
     else {
     	SPI_TX_Buffer[0] = NACK;
-    	SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
-    	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
-    	SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
-    	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
-
-    	for (i=5;i<13;i++) {
-    		SPI_TX_Buffer[i] = 0;
-    	}
     }
+	SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
+	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
+	SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
+	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+
+	for (i=5;i<13;i++) {
+		SPI_TX_Buffer[i] = 0;
+	}
 
     /*
     memcpy(SPI_TX_Buffer, (uint8_t)send_me, 5);
