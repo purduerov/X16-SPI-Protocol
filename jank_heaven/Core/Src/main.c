@@ -130,6 +130,11 @@ int main(void)
   HAL_TIM_PWM_Start(&htim2, 3);
   HAL_TIM_PWM_Start(&htim2, 4);
 */
+
+
+
+
+  // TX TESTING - LEAVE COMMENTED OR DELETE LATER
   /*
   SPI_RX_Buffer[0] = 2;
   SPI_RX_Buffer[1] = 0x5d;
@@ -182,7 +187,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
+  /* TESTING PURPOSES ONLY
   SPI_RX_Buffer[0] = 2;
   SPI_RX_Buffer[1] = 0;
   SPI_RX_Buffer[2] = 32;
@@ -196,10 +201,11 @@ int main(void)
   SPI_RX_Buffer[10] = 200;
   SPI_RX_Buffer[11] = 72;
   SPI_RX_Buffer[12] = 139;
-  // weird things happening
+
+  HAL_SPI_TxRxCpltCallback(&hspi1); */
 
 
-  HAL_SPI_TxRxCpltCallback(&hspi1);
+
 
   HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
   for (;;) {
@@ -611,7 +617,7 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_
 
     /* maybe add back error codes to say what is wrong with the message,
      * ex: CRC wrong, unmatching msg ids etc */
-
+    // THIS STUFF IS LIKELY UNUSED
     if (message_correct) {
         message.type = ACK;
     } else {
@@ -627,8 +633,11 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_
     /* Transmit response */
     //HAL_SPI_Transmit(&hspi1, (uint8_t*)&message, sizeof(message), 100);
     //*send_me = message;
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-    expected_msg_id++;
+    // DEBUGGING PURPOSES
+    //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+
+    // MAYBE TODO FOR THE FUTURE
+    //expected_msg_id++;
 
     return message_correct;
 }
