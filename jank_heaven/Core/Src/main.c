@@ -52,7 +52,8 @@ TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN PV */
 
 uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
-uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int counter = 0;
 
 /* USER CODE END PV */
 
@@ -726,8 +727,14 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 {
     struct tctp_message* received_msg = (struct tctp_message*) SPI_RX_Buffer;
-    struct tctp_message_tx* send_me;
+    struct tctp_message_tx* send_me = NULL;
     uint8_t message_correct = tctp_handler(*received_msg, send_me);
+
+    if (counter == 0) {
+    	counter += 1;
+    } else {
+    	counter = 0;
+    }
     /* Need to confirm the type is FULL_THRUST_CONTROL before we do this */
     // uint8_t received_payload[NUM_THRUSTERS] = received_msg->data.full_thrust_values;
     //SPI_TX_Buffer = (uint8_t)send_me;
