@@ -148,8 +148,8 @@ int main(void)
   SPI_RX_Buffer[9] = 200;
   SPI_RX_Buffer[10] = 200;
   SPI_RX_Buffer[11] = 1;
-  SPI_RX_Buffer[12] = 1;*/
-
+  SPI_RX_Buffer[12] = 1;
+	*/
   //HAL_SPI_TxRxCpltCallback(&hspi1);
 
 
@@ -187,7 +187,8 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  /* TESTING PURPOSES ONLY
+  // TESTING PURPOSES ONLY
+  /*
   SPI_RX_Buffer[0] = 2;
   SPI_RX_Buffer[1] = 0;
   SPI_RX_Buffer[2] = 32;
@@ -200,9 +201,9 @@ int main(void)
   SPI_RX_Buffer[9] = 200;
   SPI_RX_Buffer[10] = 200;
   SPI_RX_Buffer[11] = 72;
-  SPI_RX_Buffer[12] = 139;
+  SPI_RX_Buffer[12] = 139;*/
 
-  HAL_SPI_TxRxCpltCallback(&hspi1); */
+  //HAL_SPI_TxRxCpltCallback(&hspi1);
 
 
 
