@@ -32,7 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SPI_BUFFER_SIZE 13
+// #define SPI_BUFFER_SIZE 13
+#define SPI_BUFFER_SIZE 17
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,8 +52,10 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 
-uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
-uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+//uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
+//uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
+uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int counter = 0;
 int NUM_ERROR = 0;
 
@@ -211,21 +214,33 @@ int main(void)
   //HAL_SPI_TxRxCpltCallback(&hspi1);
 
 
+  /*
+  htim3.Instance->CCR1 = (uint32_t) 250;
+  htim3.Instance->CCR2 = (uint32_t) 250;
+  htim3.Instance->CCR3 = (uint32_t) 250;
+  htim3.Instance->CCR4 = (uint32_t) 250;
+
+  htim2.Instance->CCR1 = (uint32_t) 250;
+  htim2.Instance->CCR2 = (uint32_t) 250;
+  htim2.Instance->CCR3 = (uint32_t) 250;
+  htim2.Instance->CCR4 = (uint32_t) 250;
+  */
 
 
-  HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+  //HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
   for (;;) {
 	  //asm("nop");
 	  // Messages coming in at 50 per sec
 	  // Increment at every 50 ms
 	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-	  //HAL_Delay(50);
+	  //HAL_Delay(100);
 	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
-	  //HAL_Delay(50);
+	  //HAL_Delay(100);
 	  // Error incrementing
 
 	  HAL_Delay(50);
 	  NUM_ERROR++;
+	  /*
 	  if (NUM_ERROR >= 200) {
 	        htim3.Instance->CCR1 = (uint32_t) 250 + 127;
 	        htim3.Instance->CCR2 = (uint32_t) 250 + 127;
@@ -236,9 +251,17 @@ int main(void)
 	        htim2.Instance->CCR2 = (uint32_t) 250 + 127;
 	        htim2.Instance->CCR3 = (uint32_t) 250 + 127;
 	        htim2.Instance->CCR4 = (uint32_t) 250 + 127;
-	  }
+	  }*/
 
+	  htim3.Instance->CCR1 = (uint32_t) 250 + 180;
+	  htim3.Instance->CCR2 = (uint32_t) 250 + 180;
+	  htim3.Instance->CCR3 = (uint32_t) 250 + 180;
+	  htim3.Instance->CCR4 = (uint32_t) 250 + 180;
 
+	  htim2.Instance->CCR1 = (uint32_t) 250 + 180;
+	  htim2.Instance->CCR2 = (uint32_t) 250 + 180;
+	  htim2.Instance->CCR3 = (uint32_t) 250 + 180;
+	  htim2.Instance->CCR4 = (uint32_t) 250 + 180;
 
   }
 //  while (1)
@@ -631,10 +654,11 @@ void EnablePWMOutput(TIM_HandleTypeDef *_htim) {
 }
 
 #define NUM_THRUSTERS 8
+#define NUM_TOOLS 4
 
 enum tctp_message_type {
-    ACK  = 0,
-    NACK = 1,
+    ACK  = 1,
+    NACK = 0,
     FULL_THRUST_CONTROL = 2,
     TOOLS_THRUST_CONTROL = 3
     /* Future expansion, may need a type for each "tool" */
@@ -649,11 +673,18 @@ struct tctp_message {
 
     union {
         uint8_t full_thrust_values[NUM_THRUSTERS];
-
         /* TBD: Tools thrust values */
 
         uint8_t padding;
-    } data;
+    } data_thrust;
+
+    union {
+        uint8_t tool_values[NUM_TOOLS];
+        /* TBD: Tools thrust values */
+
+        uint8_t padding;
+    } data_tools;
+
 
     uint16_t crc;
 }__attribute__((packed));
@@ -693,7 +724,7 @@ struct tctp_message_tx {
    	  SPI_RX_Buffer_32[i] = (uint32_t) SPI_RX_Buffer[i];
      }
 
-     uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, SPI_RX_Buffer_32, 11);
+     uint32_t calculated_crc = HAL_CRC_Calculate(&hcrc, SPI_RX_Buffer_32, 15);
      calculated_crc = (uint16_t) calculated_crc;
 //     uint32_t NEW_RX_Buffer[13];
 //     for (int i = 0; i < 13; i++) {
@@ -725,7 +756,7 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_
 
     /* maybe add back error codes to say what is wrong with the message,
      * ex: CRC wrong, unmatching msg ids etc */
-    // THIS STUFF IS LIKELY UNUSED
+
     if (message_correct) {
         message.type = ACK;
     } else {
@@ -742,7 +773,7 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_
     //HAL_SPI_Transmit(&hspi1, (uint8_t*)&message, sizeof(message), 100);
     //*send_me = message;
     // DEBUGGING PURPOSES
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
+    //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
 
     // MAYBE TODO FOR THE FUTURE
     //expected_msg_id++;
@@ -784,10 +815,12 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
     }
 	SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
 	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
-	SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
-	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+	//SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
+	//SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+	SPI_TX_Buffer[3] = SPI_RX_Buffer[15];
+	SPI_TX_Buffer[4] = SPI_RX_Buffer[16];
 
-	for (i=5;i<13;i++) {
+	for (i=5;i<SPI_BUFFER_SIZE;i++) {
 		SPI_TX_Buffer[i] = 0;
 	}
 
@@ -806,7 +839,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
 
     HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
     uint8_t received_payload[NUM_THRUSTERS];
-    memcpy(received_payload, received_msg->data.full_thrust_values, NUM_THRUSTERS);
+    memcpy(received_payload, received_msg->data_thrust.full_thrust_values, NUM_THRUSTERS);
 
     /* NOTE: Cannot do a guard clause here because this is an interrupt handler */
     /* Send data to PWMs */
