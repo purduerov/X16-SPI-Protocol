@@ -57,6 +57,7 @@ TIM_HandleTypeDef htim3;
 uint8_t SPI_RX_Buffer[SPI_BUFFER_SIZE] = {127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127, 127};
 uint8_t SPI_TX_Buffer[SPI_BUFFER_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int counter = 0;
+int NUM_ERROR = 0;
 
 /* USER CODE END PV */
 
@@ -226,9 +227,8 @@ int main(void)
   */
 
 
-  //HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+  HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
   for (;;) {
-<<<<<<< HEAD
 	  //asm("nop");
 	  // Messages coming in at 50 per sec
 	  // Increment at every 50 ms
@@ -252,20 +252,6 @@ int main(void)
 	        htim2.Instance->CCR3 = (uint32_t) 250 + 127;
 	        htim2.Instance->CCR4 = (uint32_t) 250 + 127;
 	  }*/
-
-	  htim3.Instance->CCR1 = (uint32_t) 250 + 180;
-	  htim3.Instance->CCR2 = (uint32_t) 250 + 180;
-	  htim3.Instance->CCR3 = (uint32_t) 250 + 180;
-	  htim3.Instance->CCR4 = (uint32_t) 250 + 180;
-
-	  htim2.Instance->CCR1 = (uint32_t) 250 + 180;
-	  htim2.Instance->CCR2 = (uint32_t) 250 + 180;
-	  htim2.Instance->CCR3 = (uint32_t) 250 + 180;
-	  htim2.Instance->CCR4 = (uint32_t) 250 + 180;
-
-=======
-	  asm("nop");
->>>>>>> parent of c304753 (added error stuff)
   }
 //  while (1)
 //  {
@@ -526,13 +512,14 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 375;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     Error_Handler();
   }
+  sConfigOC.Pulse = 375;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
@@ -775,11 +762,7 @@ uint8_t tctp_handler(struct tctp_message received, struct tctp_message_tx* send_
     //HAL_SPI_Transmit(&hspi1, (uint8_t*)&message, sizeof(message), 100);
     //*send_me = message;
     // DEBUGGING PURPOSES
-<<<<<<< HEAD
     //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
-=======
-    //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
->>>>>>> parent of c304753 (added error stuff)
 
     // MAYBE TODO FOR THE FUTURE
     //expected_msg_id++;
@@ -859,6 +842,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi)
         htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
         htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
         htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
+        NUM_ERROR = 0;
     }
 
 	// htim3.Instance->CCR1 = (uint32_t) SPI_RX_Buffer[0] + 250;
