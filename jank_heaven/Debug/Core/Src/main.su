@@ -7,7 +7,6 @@
 ../Core/Src/main.c:390:13:MX_TIM3_Init	64	static
 ../Core/Src/main.c:461:13:MX_GPIO_Init	48	static
 ../Core/Src/main.c:487:6:EnablePWMOutput	16	static
-../Core/Src/main.c:531:9:CRC_compare_tctp	96	static
-../Core/Src/main.c:544:9:CRC_compare_tscp	88	static
-../Core/Src/main.c:557:6:HAL_SPI_TxRxCpltCallback	64	static
-../Core/Src/main.c:643:6:Error_Handler	8	static
+../Core/Src/main.c:532:9:CRC_compare	96	static
+../Core/Src/main.c:558:6:HAL_SPI_TxRxCpltCallback	56	static
+../Core/Src/main.c:623:6:Error_Handler	8	static

@@ -184,7 +184,7 @@ static void MX_CRC_Init(void)
   hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
   hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
   hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
-  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
+  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_WORDS;
   if (HAL_CRC_Init(&hcrc) != HAL_OK)
   {
     Error_Handler();
@@ -492,24 +492,25 @@ void EnablePWMOutput(TIM_HandleTypeDef *_htim) {
 	HAL_TIM_PWM_Start(_htim, TIM_CHANNEL_4);
 }
 
-enum tctp_message_type {
+enum message_type {
 	/* Future expansion, may need a type for each "tool" */
 	ACK = 0, NACK = 1, FULL_THRUST_CONTROL = 2, TOOLS_SERVO_CONTROL = 3
 };
 
 uint16_t expected_msg_id = 0;
 
-struct tctp_message {
-	enum tctp_message_type type;
+struct thrust_tools_message {
+	enum message_type message_type;
 	uint16_t message_id;
 	union {
-		uint8_t full_thrust_values[NUM_THRUSTERS];
+		uint8_t values[NUM_THRUSTERS];
 		uint8_t padding;
 	} data;
 
 	uint16_t crc;
 } __attribute__((packed));
 
+/*
 struct tscp_message {
 	enum tctp_message_type type;
 	uint16_t message_id;
@@ -519,16 +520,16 @@ struct tscp_message {
 	} data;
 
 	uint16_t crc;
-} __attribute__((packed));
+} __attribute__((packed)); */
 
-struct tctp_message_tx {
-	enum tctp_message_type type;
+struct thrust_tools_message_tx {
+	enum message_type message_type;
 	uint16_t message_id;
 	uint16_t crc;
 } __attribute__((packed));
 
 /* CRC INIT */
-uint8_t CRC_compare_tctp(struct tctp_message received_msg) {
+uint8_t CRC_compare(struct thrust_tools_message received_msg) {
 	uint16_t received_crc = received_msg.crc;
 	uint32_t SPI_RX_Buffer_32[SPI_BUFFER_SIZE];
 	for (int i = 0; i < SPI_BUFFER_SIZE; i++) {
@@ -557,72 +558,58 @@ uint8_t CRC_compare_tctp(struct tctp_message received_msg) {
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 //	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
 	uint8_t message_correct;
-	struct tctp_message *received_msg_tctp = (struct tctp_message*) SPI_RX_Buffer;
-	message_correct = CRC_compare_tctp(*received_msg_tctp);
-	if (message_correct) {
+
+	struct thrust_tools_message *received_msg = (struct thrust_tools_message*) SPI_RX_Buffer;
+
+	message_correct = CRC_compare(*received_msg);
+
+	if (message_correct) { // returning message type
 		SPI_TX_Buffer[0] = ACK;
 	} else {
 		SPI_TX_Buffer[0] = NACK;
 	}
-	switch(SPI_RX_Buffer[0]) {
-	case FULL_THRUST_CONTROL:
-		SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
-		SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
-		SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
-		SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
 
-		for (int i = 5; i < 13; i++) {
-			SPI_TX_Buffer[i] = 0;
+	SPI_TX_Buffer[1] = SPI_RX_Buffer[1]; // returning message ID
+	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
+
+	SPI_TX_Buffer[3] = SPI_RX_Buffer[11]; // returning CRC
+	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+
+	for (int i = 5; i < SPI_BUFFER_SIZE; i++) { // Filling the rest with zeroes
+		SPI_TX_Buffer[i] = 0;
+	}
+
+	HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+
+	uint8_t received_payload[NUM_THRUSTERS];
+	memcpy(received_payload, received_msg->data.values, NUM_THRUSTERS);
+
+	if (message_correct) {
+		switch (received_msg->message_type) {
+		case FULL_THRUST_CONTROL:
+			htim1.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
+			htim1.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
+			htim1.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
+			htim1.Instance->CCR4 = (uint32_t) received_payload[3] + 250;
+
+			htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
+			htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
+			htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
+			htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
+			break;
+
+		case TOOLS_SERVO_CONTROL:
+			htim3.Instance->CCR1 = (uint32_t) received_payload[0] * (500 / 0xFF);
+			htim3.Instance->CCR2 = (uint32_t) received_payload[1] * (500 / 0xFF);
+			htim3.Instance->CCR3 = (uint32_t) received_payload[2] * (500 / 0xFF);
+			htim3.Instance->CCR4 = (uint32_t) received_payload[3] * (500 / 0xFF);
+			break;
+
+		default:
+			break;
 		}
-
-		HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
-		uint8_t received_payload_tctp[NUM_THRUSTERS];
-		memcpy(received_payload_tctp, received_msg_tctp->data.full_thrust_values,	NUM_THRUSTERS);
-
-		/* Send data to PWMs */
-		if (message_correct) {
-		//		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
-			htim1.Instance->CCR1 = (uint32_t) received_payload_tctp[0] + 250;
-			htim1.Instance->CCR2 = (uint32_t) received_payload_tctp[1] + 250;
-			htim1.Instance->CCR3 = (uint32_t) received_payload_tctp[2] + 250;
-			htim1.Instance->CCR4 = (uint32_t) received_payload_tctp[3] + 250;
-
-			htim2.Instance->CCR1 = (uint32_t) received_payload_tctp[4] + 250;
-			htim2.Instance->CCR2 = (uint32_t) received_payload_tctp[5] + 250;
-			htim2.Instance->CCR3 = (uint32_t) received_payload_tctp[6] + 250;
-			htim2.Instance->CCR4 = (uint32_t) received_payload_tctp[7] + 250;
-		} else {
-			//NVIC_SystemReset();
-		}
-		break;
-	case TOOLS_SERVO_CONTROL:
-		HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, GPIO_PIN_SET);
-
-		SPI_TX_Buffer[1] = SPI_RX_Buffer[1];
-		SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
-		SPI_TX_Buffer[3] = SPI_RX_Buffer[11];
-		SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
-
-		for (int i = 5; i < 13; i++) {
-			SPI_TX_Buffer[i] = 0;
-		}
-
-		HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
-
-		uint8_t received_payload_tctp[NUM_TOOLS];
-		memcpy(received_payload_tctp, received_msg_tctp->data.full_thrust_values,	NUM_TOOLS);
-
-		if (message_correct) {
-			htim3.Instance->CCR1 = (uint32_t) received_payload_tctp[0] * (500 / 0xFF);
-			htim3.Instance->CCR2 = (uint32_t) received_payload_tctp[1] * (500 / 0xFF);
-			htim3.Instance->CCR3 = (uint32_t) received_payload_tctp[2] * (500 / 0xFF);
-			htim3.Instance->CCR4 = (uint32_t) received_payload_tctp[3] * (500 / 0xFF);
-		} else {
-			//NVIC_SystemReset();
-		}
-		break;
-	default:
-		break;
+	} else {
+		// NVIC_SystemReset();
 	}
 
 }
