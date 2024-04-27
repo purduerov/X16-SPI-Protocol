@@ -402,9 +402,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 48-1;
+  htim3.Init.Prescaler = 31-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 500-1;
+  htim3.Init.Period = 5100-1;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -427,7 +427,7 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 375;
+  sConfigOC.Pulse = 382;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -558,6 +558,7 @@ uint8_t CRC_compare(struct thrust_tools_message received_msg) {
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 //	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
 	uint8_t message_correct;
+	// TODO: additional error stuff in case of broken transactions and it can't be fixed (reset pin could work for this?)
 
 	struct thrust_tools_message *received_msg = (struct thrust_tools_message*) SPI_RX_Buffer;
 
@@ -587,6 +588,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 	if (message_correct) {
 		switch (received_msg->message_type) {
 		case FULL_THRUST_CONTROL:
+			// TODO: add thrust limiting
 			htim1.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
 			htim1.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
 			htim1.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
@@ -599,10 +601,40 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 			break;
 
 		case TOOLS_SERVO_CONTROL:
+			// For tools
+			// 50 Hz for PWM
+			// 1 ms duty cycle for full speed backwards
+			// 2 ms duty cycle for full speed forwards
+			// 1.5 ms duty cycle for no rotations
+			//
+			// Fsysclk = 8 MHz
+			// 1 ms duty cycle = 5%, 0 value
+			// 2 ms duty cycle = 10%, 255 value
+			// 1.5 ms duty cycle = 7.5%, 127.5 but take 127 value
+			// ARR = 5100-1
+			// PSC = 31-1
+			// fPWM = 8,000,000 / (5100 * 31) = 50.6 Hz
+			// duty cycle offset = 255
+			//
+			// (0 + 255)/5100 = 0.05
+			// (255 + 255)/5100 = 0.1
+			// (127 + 255)/5100 = 0.0749
+			//
+			// TODO: CHECK MY CALCULATIONS
+			// I changed the ARR, PSC and pulse fields in the ioc for timer 3. If something is broken check there
+
+			htim3.Instance->CCR1 = (uint32_t) received_payload[0] + 255;
+			htim3.Instance->CCR2 = (uint32_t) received_payload[1] + 255;
+			htim3.Instance->CCR3 = (uint32_t) received_payload[2] + 255;
+			htim3.Instance->CCR4 = (uint32_t) received_payload[3] + 255;
+
+
+
+			/*
 			htim3.Instance->CCR1 = (uint32_t) received_payload[0] * (500 / 0xFF);
 			htim3.Instance->CCR2 = (uint32_t) received_payload[1] * (500 / 0xFF);
 			htim3.Instance->CCR3 = (uint32_t) received_payload[2] * (500 / 0xFF);
-			htim3.Instance->CCR4 = (uint32_t) received_payload[3] * (500 / 0xFF);
+			htim3.Instance->CCR4 = (uint32_t) received_payload[3] * (500 / 0xFF);*/
 			break;
 
 		default:
