@@ -60,8 +60,8 @@ all: main-build
 main-build: jank_heaven.elf secondary-outputs
 
 # Tool invocations
-jank_heaven.elf jank_heaven.map: $(OBJS) $(USER_OBJS) /home/neil/rov/embedded/X16-SPI-Protocol/jank_heaven/STM32F042K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "jank_heaven.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"/home/neil/rov/embedded/X16-SPI-Protocol/jank_heaven/STM32F042K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="jank_heaven.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+jank_heaven.elf jank_heaven.map: $(OBJS) $(USER_OBJS) C:\Users\fieli\Documents\GitHub\X16-SPI-Protocol\jank_heaven\STM32F042K6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "jank_heaven.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\fieli\Documents\GitHub\X16-SPI-Protocol\jank_heaven\STM32F042K6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="jank_heaven.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
