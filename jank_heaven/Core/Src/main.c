@@ -125,7 +125,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+	//HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+	//UART version of the above line
+	HAL_UART_Transmit_IT(&huart1, SPI_TX_Buffer, SPI_BUFFER_SIZE);
+	HAL_UART_Recieve_IT(&huart1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
 	for (;;) {
 		htim3.Instance->CCR1 = 250;
 
