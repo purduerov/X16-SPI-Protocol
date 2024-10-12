@@ -559,6 +559,7 @@ uint8_t CRC_compare(struct thrust_tools_message received_msg) {
 //	return received_crc == calculated_crc;
 //}
 
+
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 //	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
 	uint8_t message_correct;
@@ -589,33 +590,173 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi) {
 	memcpy(received_payload, received_msg->data.values, NUM_THRUSTERS);
 
 	if (message_correct) {
-		switch (received_msg->message_type) {
-		case FULL_THRUST_CONTROL:
-			htim1.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
-			htim1.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
-			htim1.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
-			htim1.Instance->CCR4 = (uint32_t) received_payload[3] + 250;
-
-			htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
-			htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
-			htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
-			htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
-			break;
-
-		case TOOLS_SERVO_CONTROL:
-			htim3.Instance->CCR1 = (uint32_t) received_payload[0] * (500 / 0xFF);
-			htim3.Instance->CCR2 = (uint32_t) received_payload[1] * (500 / 0xFF);
-			htim3.Instance->CCR3 = (uint32_t) received_payload[2] * (500 / 0xFF);
-			htim3.Instance->CCR4 = (uint32_t) received_payload[3] * (500 / 0xFF);
-			break;
-
-		default:
-			break;
-		}
+//		switch (received_msg->message_type) {
+//		case FULL_THRUST_CONTROL:
+//			htim1.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
+//			htim1.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
+//			htim1.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
+//			htim1.Instance->CCR4 = (uint32_t) received_payload[3] + 250;
+//
+//			htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
+//			htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
+//			htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
+//			htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
+//			break;
+//
+//		case TOOLS_SERVO_CONTROL:
+//			htim3.Instance->CCR1 = (uint32_t) received_payload[0] * (500 / 0xFF);
+//			htim3.Instance->CCR2 = (uint32_t) received_payload[1] * (500 / 0xFF);
+//			htim3.Instance->CCR3 = (uint32_t) received_payload[2] * (500 / 0xFF);
+//			htim3.Instance->CCR4 = (uint32_t) received_payload[3] * (500 / 0xFF);
+//			break;
+//
+//		default:
+//			break;
+//		}
 	} else {
 		// NVIC_SystemReset();
 	}
 
+}
+
+
+//UART Interrupts
+
+/* TX Goal: read values from this specific one's peripheral, send it out to the pi.
+ *
+ */
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    // Code to handle completion of UART transmission
+	// TX needs to send messages to the Pi
+
+	uint8_t message_correct;
+
+	struct thrust_tools_message *received_msg = (struct thrust_tools_message*) SPI_RX_Buffer;
+
+	message_correct = CRC_compare(*received_msg);
+
+	if (message_correct) { // returning message type
+			SPI_TX_Buffer[0] = ACK;
+
+		} else {
+			SPI_TX_Buffer[0] = NACK;
+
+		}
+
+	SPI_TX_Buffer[1] = SPI_RX_Buffer[1]; // returning message ID
+	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
+
+	SPI_TX_Buffer[3] = SPI_RX_Buffer[11]; // returning CRC
+	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+
+	for (int i = 5; i < SPI_BUFFER_SIZE; i++) { // Filling the rest with zeroes
+			SPI_TX_Buffer[i] = 0;
+		}
+
+	//HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+	// Re-enable UART RX interrupt to continue receiving data
+	HAL_UART_Recieve_IT(&huart1, SPI_TX_Buffer, SPI_BUFFER_SIZE);
+
+	uint8_t received_payload[NUM_THRUSTERS];
+	memcpy(received_payload, received_msg->data.values, NUM_THRUSTERS);
+
+	if (message_correct) {
+//		switch (received_msg->message_type) {
+//		case FULL_THRUST_CONTROL:
+//			htim1.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
+//			htim1.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
+//			htim1.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
+//			htim1.Instance->CCR4 = (uint32_t) received_payload[3] + 250;
+//
+//			htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
+//			htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
+//			htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
+//			htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
+//			break;
+//
+//		case TOOLS_SERVO_CONTROL:
+//			htim3.Instance->CCR1 = (uint32_t) received_payload[0] * (500 / 0xFF);
+//			htim3.Instance->CCR2 = (uint32_t) received_payload[1] * (500 / 0xFF);
+//			htim3.Instance->CCR3 = (uint32_t) received_payload[2] * (500 / 0xFF);
+//			htim3.Instance->CCR4 = (uint32_t) received_payload[3] * (500 / 0xFF);
+//			break;
+//
+//		default:
+//			break;
+//		}
+	} else {
+		// NVIC_SystemReset();
+	}
+}
+
+
+/* RX Goal: Check the message ID to see if it this chip's
+ * If it is the chip's, then read the data, and perform things
+*/
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    // Code to handle completion of UART reception
+	// RX intakes messages
+
+	uint8_t message_correct;
+
+	struct thrust_tools_message *received_msg = (struct thrust_tools_message*) SPI_RX_Buffer;
+
+	message_correct = CRC_compare(*received_msg);
+
+	if (message_correct) { // returning message type
+			SPI_TX_Buffer[0] = ACK;
+
+		} else {
+			SPI_TX_Buffer[0] = NACK;
+
+		}
+
+	SPI_TX_Buffer[1] = SPI_RX_Buffer[1]; // returning message ID
+	SPI_TX_Buffer[2] = SPI_RX_Buffer[2];
+
+	SPI_TX_Buffer[3] = SPI_RX_Buffer[11]; // returning CRC
+	SPI_TX_Buffer[4] = SPI_RX_Buffer[12];
+
+	for (int i = 5; i < SPI_BUFFER_SIZE; i++) { // Filling the rest with zeroes
+			SPI_TX_Buffer[i] = 0;
+		}
+
+	//HAL_SPI_TransmitReceive_IT(&hspi1, SPI_TX_Buffer, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+	// Re-enable UART RX interrupt to continue receiving data
+	HAL_UART_Recieve_IT(&huart1, SPI_RX_Buffer, SPI_BUFFER_SIZE);
+
+	uint8_t received_payload[NUM_THRUSTERS];
+	memcpy(received_payload, received_msg->data.values, NUM_THRUSTERS);
+
+	if (message_correct) {
+//		switch (received_msg->message_type) {
+//		case FULL_THRUST_CONTROL:
+//			htim1.Instance->CCR1 = (uint32_t) received_payload[0] + 250;
+//			htim1.Instance->CCR2 = (uint32_t) received_payload[1] + 250;
+//			htim1.Instance->CCR3 = (uint32_t) received_payload[2] + 250;
+//			htim1.Instance->CCR4 = (uint32_t) received_payload[3] + 250;
+//
+//			htim2.Instance->CCR1 = (uint32_t) received_payload[4] + 250;
+//			htim2.Instance->CCR2 = (uint32_t) received_payload[5] + 250;
+//			htim2.Instance->CCR3 = (uint32_t) received_payload[6] + 250;
+//			htim2.Instance->CCR4 = (uint32_t) received_payload[7] + 250;
+//			break;
+//
+//		case TOOLS_SERVO_CONTROL:
+//			htim3.Instance->CCR1 = (uint32_t) received_payload[0] * (500 / 0xFF);
+//			htim3.Instance->CCR2 = (uint32_t) received_payload[1] * (500 / 0xFF);
+//			htim3.Instance->CCR3 = (uint32_t) received_payload[2] * (500 / 0xFF);
+//			htim3.Instance->CCR4 = (uint32_t) received_payload[3] * (500 / 0xFF);
+//			break;
+//
+//		default:
+//			break;
+//		}
+	} else {
+		// NVIC_SystemReset();
+	}
 }
 
 /* USER CODE END 4 */
